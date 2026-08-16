@@ -67,10 +67,10 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         logging.exception("Falha ao iniciar a aplicação")
-        _show_error(
-            "Não foi possível iniciar a aplicação.\n\n"
-            f"Detalhe: {error}\n\n"
-            f"Consulte o log em: {_user_data_dir() / 'application.log'}"
-        )
+        if os.environ.get("CLINIC_ANALYTICS_HEADLESS", "false").lower() != "true":
+            _show_error(
+                "Não foi possível iniciar a aplicação.\n\n"
+                f"Detalhe: {error}\n\n"
+                f"Consulte o log em: {_user_data_dir() / 'application.log'}"
+            )
         raise
-
