@@ -35,13 +35,15 @@ O `run.ps1` cria o ambiente virtual, instala as dependências e abre a aplicaç�
 
 ## Instalador Windows
 
-O instalador `AnaliseAtendimentoExames-Setup-0.1.0-win64.exe` contém o runtime Python e todas as dependências. O computador de destino não precisa ter Python instalado.
+O instalador `AnaliseAtendimentoExames-Setup-0.1.1-win64.exe` contém o runtime Python e todas as dependências. O computador de destino não precisa ter Python instalado.
 
 - compatível com Windows 10/11 de 64 bits;
 - instalação no perfil do usuário, sem exigir administrador;
 - atalhos no menu Iniciar e, opcionalmente, na Área de Trabalho;
 - dados locais em `%LOCALAPPDATA%\AnaliseAtendimentoExames`;
 - nenhuma planilha é enviada para serviços externos.
+
+Se a interface não abrir, use **Diagnóstico - Análise de Atendimento e Exames** no menu Iniciar. A versão 0.1.1 registra a inicialização antes de carregar o Streamlit e grava `application.log`, `console.log` e `native-crash.log` em `%LOCALAPPDATA%\AnaliseAtendimentoExames`.
 
 O GitHub Actions gera o instalador automaticamente e o publica como artefato do workflow **Build Windows installer**. Para compilar manualmente, instale Python 3.12+ e Inno Setup 6 e execute:
 
