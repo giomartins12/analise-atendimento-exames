@@ -1,5 +1,5 @@
 #define AppName "Análise de Atendimento e Exames"
-#define AppVersion "0.1.0"
+#define AppVersion "0.1.1"
 #define AppExeName "AnaliseAtendimentoExames.exe"
 #define SourceRoot SourcePath + ".."
 
@@ -33,8 +33,8 @@ Source: "{#SourceRoot}\dist\AnaliseAtendimentoExames\*"; DestDir: "{app}"; Flags
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\Diagnóstico - {#AppName}"; Filename: "{app}\AnaliseAtendimentoExames-Diagnostico.exe"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
-
