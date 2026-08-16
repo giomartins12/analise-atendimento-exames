@@ -14,6 +14,12 @@ WEEKDAYS_PT = {
 }
 
 
+def coverage_table(frame: pd.DataFrame) -> pd.DataFrame:
+    """Cria a tabela de preenchimento sem depender de APIs recentes do Pandas."""
+    coverage = frame.notna().mean().mul(100).rename("Preenchimento (%)")
+    return coverage.reset_index().rename(columns={"index": "Campo"})
+
+
 def find_overlaps(sessions: pd.DataFrame, resource: str) -> pd.DataFrame:
     """Retorna pares de sessões simultâneas para a mesma sala ou médico."""
     columns = [resource, "service_date", "session_a", "session_b", "overlap_min"]
@@ -136,4 +142,3 @@ def management_export(
         "sessoes.csv": sessions[session_columns].to_csv(index=False).encode("utf-8-sig"),
         "procedimentos.csv": procedures[procedure_columns].to_csv(index=False).encode("utf-8-sig"),
     }
-
