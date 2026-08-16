@@ -1,0 +1,70 @@
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/marco-1-foundation
+    paths:
+      - "app.py"
+      - "launcher.py"
+      - "pyproject.toml"
+      - "src/**"
+      - "tests/**"
+      - "installer/**"
+      - "scripts/build-windows.ps1"
+      - ".github/workflows/build-windows-installer.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+          }
+
+      - name: Build application and installer
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
+
+      - name: Smoke test packaged application
+        shell: powershell
+        run: |
+          $env:CLINIC_ANALYTICS_PORT = "8765"
+          $env:CLINIC_ANALYTICS_HEADLESS = "true"
+          $process = Start-Process ".\dist\AnaliseAtendimentoExames\AnaliseAtendimentoExames.exe" -PassThru
+          try {
+            $healthy = $false
+            for ($attempt = 0; $attempt -lt 60; $attempt++) {
+              Start-Sleep -Seconds 1
+              try {
+                $response = Invoke-WebRequest "http://127.0.0.1:8765/_stcore/health" -UseBasicParsing
+                if ($response.StatusCode -eq 200) { $healthy = $true; break }
+              } catch {}
+            }
+            if (-not $healthy) { throw "A aplicação empacotada não ficou saudável." }
+          } finally {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnaliseAtendimentoExames-Windows
+          path: installer/output/AnaliseAtendimentoExames-Setup-*-win64.exe
+          if-no-files-found: error
+          retention-days: 30
+
