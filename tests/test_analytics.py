@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from clinic_analytics.analytics import (
+    coverage_table,
     demand_by_weekday_hour,
     find_overlaps,
     management_export,
@@ -24,6 +25,13 @@ def sample_sessions() -> pd.DataFrame:
             "procedure_count": [1, 1, 1],
         }
     )
+
+
+def test_coverage_table_has_stable_column_names() -> None:
+    coverage = coverage_table(pd.DataFrame({"filled": [1, 2], "partial": [1, None]}))
+    assert list(coverage.columns) == ["Campo", "Preenchimento (%)"]
+    assert coverage.set_index("Campo").loc["filled", "Preenchimento (%)"] == 100
+    assert coverage.set_index("Campo").loc["partial", "Preenchimento (%)"] == 50
 
 
 def test_overlap_detection_is_pairwise_by_resource_and_day() -> None:
@@ -55,4 +63,3 @@ def test_privacy_export_omits_patient_name() -> None:
     text = exports["sessoes.csv"].decode("utf-8-sig")
     assert "patient_name" not in text
     assert "P1" not in text
-
