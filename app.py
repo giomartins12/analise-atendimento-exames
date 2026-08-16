@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,8 +26,9 @@ from clinic_analytics.history import load_history, save_snapshot  # noqa: E402
 from clinic_analytics.pipeline import analyze_csv  # noqa: E402
 from clinic_analytics.reporting import build_snapshot, generate_report  # noqa: E402
 
-MAPPING_PATH = ROOT / ".clinic_analytics" / "mapping.json"
-HISTORY_PATH = ROOT / ".clinic_analytics" / "history.sqlite3"
+DATA_DIR = Path(os.environ.get("CLINIC_ANALYTICS_DATA_DIR", ROOT / ".clinic_analytics"))
+MAPPING_PATH = DATA_DIR / "mapping.json"
+HISTORY_PATH = DATA_DIR / "history.sqlite3"
 
 st.set_page_config(page_title="Análise de Atendimentos", page_icon="🏥", layout="wide")
 st.title("Análise de Atendimento e Exames")
