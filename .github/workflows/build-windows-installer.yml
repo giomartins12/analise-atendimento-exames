@@ -51,14 +51,20 @@ jobs:
           $process = Start-Process ".\dist\AnaliseAtendimentoExames\AnaliseAtendimentoExames.exe" -PassThru
           try {
             $healthy = $false
-            for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            for ($attempt = 0; $attempt -lt 90; $attempt++) {
               Start-Sleep -Seconds 1
+              if ($process.HasExited) { break }
               try {
-                $response = Invoke-WebRequest "http://127.0.0.1:8765/_stcore/health" -UseBasicParsing
+                $response = Invoke-WebRequest "http://127.0.0.1:8765/_stcore/health" -UseBasicParsing -TimeoutSec 2
                 if ($response.StatusCode -eq 200) { $healthy = $true; break }
               } catch {}
             }
-            if (-not $healthy) { throw "A aplicação empacotada não ficou saudável." }
+            if (-not $healthy) {
+              $logPath = Join-Path $env:LOCALAPPDATA "AnaliseAtendimentoExames\application.log"
+              if (Test-Path $logPath) { Get-Content $logPath }
+              if ($process.HasExited) { Write-Host "Exit code: $($process.ExitCode)" }
+              throw "A aplicação empacotada não ficou saudável."
+            }
           } finally {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
           }
