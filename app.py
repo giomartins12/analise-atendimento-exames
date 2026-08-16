@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from clinic_analytics.mapping import ALIASES, load_mapping, save_mapping  # noqa: E402
 from clinic_analytics.analytics import (  # noqa: E402
     WEEKDAYS_PT,
+    coverage_table,
     demand_by_weekday_hour,
     find_overlaps,
     management_export,
@@ -175,7 +176,7 @@ with tab_quality:
         st.success("Nenhuma inconsistência coberta pelas regras atuais foi encontrada.")
     else:
         st.dataframe(result.quality, hide_index=True, use_container_width=True)
-    coverage = procedures.notna().mean().mul(100).rename("Preenchimento (%)").reset_index(names="Campo")
+    coverage = coverage_table(procedures)
     st.dataframe(coverage.round(1), hide_index=True, use_container_width=True)
 
 with tab_details:
