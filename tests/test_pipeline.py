@@ -16,6 +16,10 @@ def csv_bytes(rows: list[str]) -> bytes:
     return (HEADER + "\n" + "\n".join(rows)).encode("cp1252")
 
 
+def row_from(**values: str) -> str:
+    return ";".join(values.get(column, "") for column in HEADER.split(";"))
+
+
 def test_detects_cp1252_and_semicolon() -> None:
     content = "Paciente;Convênio\nJosé;Saúde".encode("cp1252")
     assert detect_encoding(content) == "cp1252"
@@ -56,3 +60,19 @@ def test_early_arrival_is_not_treated_as_next_day() -> None:
     result = analyze_csv(csv_bytes([row]))
     assert result.sessions.iloc[0]["patient_delay_min"] == 0
     assert result.sessions.iloc[0]["start_delay_min"] == 10
+
+
+def test_invalid_result_delivery_is_audited_and_excluded_from_kpi() -> None:
+    row = row_from(**{
+        "Data": "01/07/2026", "Hora": "09:00:00", "Paciente": "A", "Modalidade": "US",
+        "Sala": "S1", "Médico Executante": "M1", "Procedimento": "E1", "Qte": "1",
+        "H. Entrada": "09:00:00", "H. E. Sala": "09:10:00", "H. S. Sala": "09:20:00",
+        "H. Saída": "09:30:00", "Laudo?": "True", "D. Laudo": "01/07/2026 09:25",
+        "D. Assinado": "01/07/2026 09:40", "D. Entrega Realizado": "01/07/2026 09:15",
+    })
+    result = analyze_csv(csv_bytes([row]))
+    assert result.sessions.iloc[0]["result_delivery_min_raw"] == -5
+    assert result.sessions.iloc[0]["result_delivery_min"] != result.sessions.iloc[0]["result_delivery_min"]
+    assert set(result.quality["rule"]) >= {
+        "delivery_before_exam_end", "delivery_before_report", "delivery_before_signature"
+    }
