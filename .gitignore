@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.clinic_analytics/
+.streamlit/secrets.toml
+*.csv
+*.xlsx
+*.xls
+exports/
