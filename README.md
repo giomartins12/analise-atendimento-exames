@@ -14,6 +14,10 @@ Aplicação Streamlit executada localmente para analisar o fluxo operacional de 
 - modo privacidade ativado por padrão;
 - configuração do mapeamento salva somente no computador local;
 - testes unitários das regras homologadas.
+- detecção de sobreposições de sala e médico;
+- ocupação observada, tempo ocioso e horários de pico;
+- limites configuráveis para atraso e espera;
+- exportações gerenciais com privacidade.
 
 ## Executar no Windows 11
 
@@ -47,4 +51,3 @@ Ou execute `run.ps1`, que cria o ambiente e instala as dependências automaticam
 ## Privacidade
 
 Não faça commit de planilhas reais. O `.gitignore` bloqueia formatos comuns de planilha. Nomes aparecem somente em uma tabela detalhada quando o modo privacidade é desligado pelo usuário.
-
