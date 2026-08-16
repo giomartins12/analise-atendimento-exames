@@ -72,6 +72,7 @@ def _configure_diagnostics(data_dir: Path) -> Path:
         filename=log_path,
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
+        encoding="utf-8",
         force=True,
     )
     _fault_log_handle = (data_dir / "native-crash.log").open("a", encoding="utf-8")
