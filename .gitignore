@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.build-venv/
 venv/
 .clinic_analytics/
 .streamlit/secrets.toml
@@ -9,3 +10,6 @@ venv/
 *.xlsx
 *.xls
 exports/
+build/
+dist/
+installer/output/
