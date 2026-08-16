@@ -119,6 +119,36 @@ def demand_by_weekday_hour(sessions: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def demand_by_procedure_weekday_hour(procedures: pd.DataFrame) -> pd.DataFrame:
+    required = {"scheduled_time", "service_date", "procedure", "procedure_id"}
+    if not required.issubset(procedures.columns):
+        return pd.DataFrame(columns=["procedure", "weekday", "weekday_order", "hour", "procedures"])
+    clock = pd.to_datetime(procedures["scheduled_time"], format="%H:%M:%S", errors="coerce")
+    data = procedures.assign(
+        weekday_order=procedures["service_date"].dt.dayofweek,
+        hour=clock.dt.hour,
+    ).dropna(subset=["procedure", "weekday_order", "hour"])
+    data["weekday"] = data["weekday_order"].astype(int).map(WEEKDAYS_PT)
+    return (
+        data.groupby(["procedure", "weekday_order", "weekday", "hour"], as_index=False)
+        .agg(procedures=("procedure_id", "nunique"))
+        .sort_values(["procedure", "weekday_order", "hour"])
+    )
+
+
+def daily_exam_patient_relation(procedures: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+    required = {"service_date", "patient_id", "procedure_id"}
+    if not required.issubset(procedures.columns):
+        return pd.DataFrame(columns=["service_date", "patients", "procedures", "procedures_per_patient"]), float("nan")
+    daily = procedures.groupby("service_date", as_index=False).agg(
+        patients=("patient_id", "nunique"),
+        procedures=("procedure_id", "nunique"),
+    )
+    daily["procedures_per_patient"] = daily["procedures"].div(daily["patients"].replace(0, pd.NA))
+    correlation = daily["patients"].corr(daily["procedures"]) if len(daily) > 1 else float("nan")
+    return daily, float(correlation) if pd.notna(correlation) else float("nan")
+
+
 def management_export(
     sessions: pd.DataFrame,
     procedures: pd.DataFrame,
