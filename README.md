@@ -21,16 +21,13 @@ Aplicação Streamlit executada localmente para analisar o fluxo operacional de 
 
 ## Executar no Windows 11
 
-Requer Python 3.12.
+Requer Python 3.12 ou superior. O script detecta automaticamente o Python Launcher (`py`), `python` ou `python3`.
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-streamlit run app.py
+powershell -ExecutionPolicy Bypass -File .\run.ps1
 ```
 
-Ou execute `run.ps1`, que cria o ambiente e instala as dependências automaticamente.
+O `run.ps1` cria o ambiente virtual, instala as dependências e abre a aplicação. Python 3.13 e 3.14 também são aceitos quando as dependências disponibilizam versões compatíveis.
 
 ## Regras homologadas
 
