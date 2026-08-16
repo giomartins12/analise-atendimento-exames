@@ -25,6 +25,34 @@ def test_packaged_streamlit_runs_in_production_mode(tmp_path: Path) -> None:
     assert "--server.headless=true" in arguments
 
 
+def test_browser_is_opened_after_health_check(monkeypatch) -> None:
+    opened = []
+
+    class HealthyResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class ImmediateThread:
+        def __init__(self, target, **_kwargs):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr(launcher.urllib.request, "urlopen", lambda *_args, **_kwargs: HealthyResponse())
+    monkeypatch.setattr(launcher.webbrowser, "open", lambda url, new=0: opened.append((url, new)))
+    monkeypatch.setattr(launcher.threading, "Thread", ImmediateThread)
+
+    launcher._open_browser_when_ready(8765)
+
+    assert opened == [("http://127.0.0.1:8765", 2)]
+
+
 def test_diagnostics_are_written_before_streamlit_import(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     log_path = launcher._configure_diagnostics(launcher._user_data_dir())
