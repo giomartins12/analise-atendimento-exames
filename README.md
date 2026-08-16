@@ -33,6 +33,22 @@ powershell -ExecutionPolicy Bypass -File .\run.ps1
 
 O `run.ps1` cria o ambiente virtual, instala as dependências e abre a aplicação. Python 3.13 e 3.14 também são aceitos quando as dependências disponibilizam versões compatíveis.
 
+## Instalador Windows
+
+O instalador `AnaliseAtendimentoExames-Setup-0.1.0-win64.exe` contém o runtime Python e todas as dependências. O computador de destino não precisa ter Python instalado.
+
+- compatível com Windows 10/11 de 64 bits;
+- instalação no perfil do usuário, sem exigir administrador;
+- atalhos no menu Iniciar e, opcionalmente, na Área de Trabalho;
+- dados locais em `%LOCALAPPDATA%\AnaliseAtendimentoExames`;
+- nenhuma planilha é enviada para serviços externos.
+
+O GitHub Actions gera o instalador automaticamente e o publica como artefato do workflow **Build Windows installer**. Para compilar manualmente, instale Python 3.12+ e Inno Setup 6 e execute:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
+```
+
 ## Regras homologadas
 
 - paciente único: nome normalizado, pois o arquivo não possui identificador estável;
