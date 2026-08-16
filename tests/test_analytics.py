@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from clinic_analytics.analytics import (
     coverage_table,
+    daily_exam_patient_relation,
+    demand_by_procedure_weekday_hour,
     demand_by_weekday_hour,
     find_overlaps,
     management_export,
@@ -63,3 +66,19 @@ def test_privacy_export_omits_patient_name() -> None:
     text = exports["sessoes.csv"].decode("utf-8-sig")
     assert "patient_name" not in text
     assert "P1" not in text
+
+
+def test_procedure_demand_and_patient_relation() -> None:
+    procedures = sample_sessions().rename(columns={"session_id": "procedure_id"}).assign(
+        procedure=["E1", "E1", "E2"],
+        patient_id=["P1", "P2", "P3"],
+    )
+    demand = demand_by_procedure_weekday_hour(procedures)
+    e1_monday_nine = demand[
+        demand["procedure"].eq("E1") & demand["weekday"].eq("Segunda") & demand["hour"].eq(9)
+    ]
+    assert e1_monday_nine.iloc[0]["procedures"] == 2
+    daily, correlation = daily_exam_patient_relation(procedures)
+    assert list(daily["procedures"]) == [2, 1]
+    assert list(daily["patients"]) == [2, 1]
+    assert correlation == pytest.approx(1)
