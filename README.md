@@ -18,6 +18,10 @@ Aplicação Streamlit executada localmente para analisar o fluxo operacional de 
 - ocupação observada, tempo ocioso e horários de pico;
 - limites configuráveis para atraso e espera;
 - exportações gerenciais com privacidade.
+- comparação entre pacientes e procedimentos, incluindo correlação diária;
+- demanda por dia e horário filtrável por tipo de procedimento;
+- relatório analítico documentado e disponível para download;
+- histórico mensal local em SQLite, contendo apenas indicadores agregados.
 
 ## Executar no Windows 11
 
