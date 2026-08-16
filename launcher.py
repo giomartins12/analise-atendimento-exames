@@ -6,12 +6,16 @@ import os
 import platform
 import socket
 import sys
+import threading
+import time
 import traceback
+import urllib.request
+import webbrowser
 from pathlib import Path
 
 
 APP_NAME = "AnaliseAtendimentoExames"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 _fault_log_handle = None
 _console_log_handle = None
 _stdin_handle = None
@@ -51,6 +55,25 @@ def _streamlit_arguments(app_path: Path, port: int, headless: str) -> list[str]:
         "--browser.gatherUsageStats=false",
         "--server.fileWatcherType=none",
     ]
+
+
+def _open_browser_when_ready(port: int) -> None:
+    url = f"http://127.0.0.1:{port}"
+
+    def wait_and_open() -> None:
+        health_url = f"{url}/_stcore/health"
+        for _attempt in range(120):
+            try:
+                with urllib.request.urlopen(health_url, timeout=1) as response:
+                    if response.status == 200:
+                        logging.info("Abrindo navegador em %s", url)
+                        webbrowser.open(url, new=2)
+                        return
+            except Exception:
+                time.sleep(0.25)
+        logging.warning("Servidor não ficou disponível para abertura do navegador: %s", url)
+
+    threading.Thread(target=wait_and_open, name="browser-launcher", daemon=True).start()
 
 
 def _configure_diagnostics(data_dir: Path) -> Path:
@@ -100,8 +123,12 @@ def main() -> None:
     os.environ["CLINIC_ANALYTICS_DATA_DIR"] = str(data_dir)
     os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
     port = _available_port()
-    headless = os.environ.get("CLINIC_ANALYTICS_HEADLESS", "false").lower()
-    sys.argv = _streamlit_arguments(app_path, port, headless)
+    requested_headless = os.environ.get("CLINIC_ANALYTICS_HEADLESS", "false").lower()
+    if requested_headless != "true":
+        _open_browser_when_ready(port)
+    # O Streamlit em modo não-headless solicita um e-mail no primeiro uso. O
+    # launcher abre o navegador diretamente e mantém o servidor sem prompts.
+    sys.argv = _streamlit_arguments(app_path, port, "true")
     logging.info("Importando Streamlit")
     from streamlit.web import cli as streamlit_cli
 
