@@ -155,9 +155,12 @@ def analyze_csv(content: bytes, mapping_override: dict[str, str] | None = None) 
     calculate("after_exam_min", "clinic_exit_time_dt", "room_exit_time_dt")
     calculate("total_stay_min", "clinic_exit_time_dt", "clinic_entry_time_dt")
     if "result_delivered_time_dt" in procedures and "room_exit_time_dt" in procedures:
-        procedures["result_delivery_min"] = (
+        procedures["result_delivery_min_raw"] = (
             procedures["result_delivered_time_dt"] - procedures["room_exit_time_dt"]
         ).dt.total_seconds() / 60
+        procedures["result_delivery_min"] = procedures["result_delivery_min_raw"].where(
+            procedures["result_delivery_min_raw"].ge(0)
+        )
 
     session_agg: dict[str, tuple[str, str]] = {
         "patient_id": ("patient_id", "first"), "visit_id": ("visit_id", "first"),
@@ -165,7 +168,7 @@ def analyze_csv(content: bytes, mapping_override: dict[str, str] | None = None) 
         "scheduled_time": ("scheduled_time", "first"), "patient_name": ("patient_name", "first"),
         "procedure_count": ("procedure_id", "size"),
     }
-    for field in ("clinic", "modality", "room", "physician", "insurer", "clinic_entry_time_dt", "room_entry_time_dt", "room_exit_time_dt", "clinic_exit_time_dt", "patient_delay_min", "wait_to_exam_min", "start_delay_min", "exam_duration_min", "after_exam_min", "total_stay_min", "result_delivery_min", "session_quantity_num"):
+    for field in ("clinic", "modality", "room", "physician", "insurer", "clinic_entry_time_dt", "room_entry_time_dt", "room_exit_time_dt", "clinic_exit_time_dt", "patient_delay_min", "wait_to_exam_min", "start_delay_min", "exam_duration_min", "after_exam_min", "total_stay_min", "result_delivery_min_raw", "result_delivery_min", "session_quantity_num"):
         if field in procedures:
             session_agg[field] = (field, "first")
     sessions = procedures.groupby("session_id", as_index=False).agg(**session_agg)
@@ -197,10 +200,18 @@ def analyze_csv(content: bytes, mapping_override: dict[str, str] | None = None) 
             impossible = int(procedures[metric].isna().sum() - procedures[metric.replace("_min", "")].isna().sum()) if metric.replace("_min", "") in procedures else 0
             if impossible > 0:
                 issues.append({"severity": "warning", "rule": f"negative_{metric}", "count": impossible, "description": "Intervalo negativo não foi usado no indicador."})
-    if "result_delivery_min" in procedures:
-        negative_delivery = int(procedures["result_delivery_min"].lt(0).sum())
+    if "result_delivery_min_raw" in procedures:
+        negative_delivery = int(procedures["result_delivery_min_raw"].lt(0).sum())
         if negative_delivery:
             issues.append({"severity": "warning", "rule": "delivery_before_exam_end", "count": negative_delivery, "description": "Entrega registrada antes do término do exame; requer auditoria da origem."})
+    for reference, rule, description in (
+        ("report_time_dt", "delivery_before_report", "Entrega registrada antes da geração do laudo."),
+        ("report_signed_time_dt", "delivery_before_signature", "Entrega registrada antes da assinatura do laudo."),
+    ):
+        if "result_delivered_time_dt" in procedures and reference in procedures:
+            count = int(procedures["result_delivered_time_dt"].lt(procedures[reference]).sum())
+            if count:
+                issues.append({"severity": "warning", "rule": rule, "count": count, "description": description})
     quality = pd.DataFrame(issues, columns=["severity", "rule", "count", "description"])
 
     return AnalysisResult(raw, procedures, sessions, appointments, visits, quality, metadata, mapping, confidence, set())
