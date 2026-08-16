@@ -60,8 +60,14 @@ jobs:
               } catch {}
             }
             if (-not $healthy) {
-              $logPath = Join-Path $env:LOCALAPPDATA "AnaliseAtendimentoExames\application.log"
-              if (Test-Path $logPath) { Get-Content $logPath }
+              $logDirectory = Join-Path $env:LOCALAPPDATA "AnaliseAtendimentoExames"
+              foreach ($logName in @("application.log", "console.log", "native-crash.log")) {
+                $logPath = Join-Path $logDirectory $logName
+                if (Test-Path $logPath) {
+                  Write-Host "Log: $logName"
+                  Get-Content $logPath
+                }
+              }
               if ($process.HasExited) { Write-Host "Exit code: $($process.ExitCode)" }
               throw "A aplicação empacotada não ficou saudável."
             }
