@@ -11,6 +11,13 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from clinic_analytics.mapping import ALIASES, load_mapping, save_mapping  # noqa: E402
+from clinic_analytics.analytics import (  # noqa: E402
+    WEEKDAYS_PT,
+    demand_by_weekday_hour,
+    find_overlaps,
+    management_export,
+    resource_summary,
+)
 from clinic_analytics.pipeline import analyze_csv  # noqa: E402
 
 MAPPING_PATH = ROOT / ".clinic_analytics" / "mapping.json"
@@ -23,6 +30,9 @@ with st.sidebar:
     st.header("Arquivo e filtros")
     upload = st.file_uploader("Selecione o CSV", type=["csv"])
     privacy_mode = st.toggle("Modo privacidade", value=True, help="Oculta nomes nas visualizações detalhadas.")
+    st.subheader("Limites operacionais")
+    start_delay_limit = st.number_input("Início no prazo até (min)", min_value=0, value=10, step=5)
+    wait_limit = st.number_input("Espera excessiva acima de (min)", min_value=0, value=30, step=5)
 
 if upload is None:
     st.info("Selecione um arquivo CSV para iniciar a análise.")
@@ -82,6 +92,16 @@ metrics[2].metric("Agendamentos", filtered_appointments["appointment_id"].nuniqu
 metrics[3].metric("Sessões", sessions["session_id"].nunique())
 metrics[4].metric("Procedimentos", procedures["procedure_id"].nunique())
 
+time_metrics = st.columns(4)
+median_wait = sessions["wait_to_exam_min"].median() if "wait_to_exam_min" in sessions else float("nan")
+median_duration = sessions["exam_duration_min"].median() if "exam_duration_min" in sessions else float("nan")
+on_time = sessions["start_delay_min"].le(start_delay_limit).mean() * 100 if "start_delay_min" in sessions else float("nan")
+excess_wait = sessions["wait_to_exam_min"].gt(wait_limit).mean() * 100 if "wait_to_exam_min" in sessions else float("nan")
+time_metrics[0].metric("Espera mediana", f"{median_wait:.1f} min" if pd.notna(median_wait) else "Sem dados")
+time_metrics[1].metric("Duração mediana", f"{median_duration:.1f} min" if pd.notna(median_duration) else "Sem dados")
+time_metrics[2].metric("Início dentro do limite", f"{on_time:.1f}%" if pd.notna(on_time) else "Sem dados")
+time_metrics[3].metric("Espera acima do limite", f"{excess_wait:.1f}%" if pd.notna(excess_wait) else "Sem dados")
+
 tab_overview, tab_times, tab_resources, tab_reports, tab_quality, tab_details = st.tabs(
     ["Visão geral", "Tempos", "Salas e médicos", "Laudos", "Qualidade", "Detalhes"]
 )
@@ -91,6 +111,22 @@ with tab_overview:
     st.plotly_chart(px.line(daily, x="service_date", y=["sessoes", "pacientes"], markers=True, labels={"value": "Quantidade", "service_date": "Data", "variable": "Indicador"}), use_container_width=True)
     volume = procedures.groupby("procedure", as_index=False).size().sort_values("size", ascending=False)
     st.plotly_chart(px.bar(volume.head(15), x="size", y="procedure", orientation="h", labels={"size": "Procedimentos", "procedure": "Exame"}), use_container_width=True)
+    demand = demand_by_weekday_hour(sessions)
+    if not demand.empty:
+        weekday_order = [WEEKDAYS_PT[index] for index in range(7) if WEEKDAYS_PT[index] in demand["weekday"].unique()]
+        st.plotly_chart(
+            px.density_heatmap(
+                demand,
+                x="hour",
+                y="weekday",
+                z="sessions",
+                histfunc="sum",
+                category_orders={"weekday": weekday_order},
+                labels={"hour": "Hora agendada", "weekday": "Dia da semana", "sessions": "Sessões"},
+                title="Demanda por dia da semana e horário",
+            ),
+            use_container_width=True,
+        )
 
 with tab_times:
     labels = {
@@ -108,13 +144,21 @@ with tab_times:
         st.plotly_chart(px.box(sessions, x="modality" if "modality" in sessions else None, y="exam_duration_min", points="outliers", labels={"exam_duration_min": "Duração (min)", "modality": "Modalidade"}), use_container_width=True)
 
 with tab_resources:
+    room_summary = resource_summary(sessions, "room") if "room" in sessions else pd.DataFrame()
+    physician_summary = resource_summary(sessions, "physician") if "physician" in sessions else pd.DataFrame()
+    room_overlaps = find_overlaps(sessions, "room") if "room" in sessions else pd.DataFrame()
+    physician_overlaps = find_overlaps(sessions, "physician") if "physician" in sessions else pd.DataFrame()
+    overlap_metrics = st.columns(2)
+    overlap_metrics[0].metric("Sobreposições de sala", len(room_overlaps))
+    overlap_metrics[1].metric("Sobreposições de médico", len(physician_overlaps))
+    st.caption("Sobreposição indica intervalos simultâneos e deve ser auditada; não significa automaticamente erro operacional.")
     left, right = st.columns(2)
     if "room" in sessions:
-        by_room = sessions.groupby("room", as_index=False).agg(sessoes=("session_id", "size"), minutos_ocupados=("exam_duration_min", "sum"))
-        left.plotly_chart(px.bar(by_room, x="room", y="sessoes", labels={"room": "Sala", "sessoes": "Sessões"}), use_container_width=True)
+        left.plotly_chart(px.bar(room_summary, x="room", y="sessions", labels={"room": "Sala", "sessions": "Sessões"}), use_container_width=True)
+        left.dataframe(room_summary.round(1), hide_index=True, use_container_width=True)
     if "physician" in sessions:
-        by_physician = sessions.groupby("physician", as_index=False).agg(sessoes=("session_id", "size"), procedimentos=("procedure_count", "sum"))
-        right.plotly_chart(px.bar(by_physician, x="physician", y="sessoes", labels={"physician": "Médico", "sessoes": "Sessões"}), use_container_width=True)
+        right.plotly_chart(px.bar(physician_summary, x="physician", y="sessions", labels={"physician": "Médico", "sessions": "Sessões"}), use_container_width=True)
+        right.dataframe(physician_summary.round(1), hide_index=True, use_container_width=True)
 
 with tab_reports:
     if "has_report_bool" in procedures:
@@ -140,4 +184,16 @@ with tab_details:
         visible.insert(2, "patient_name")
     visible = [column for column in visible if column in procedures]
     st.dataframe(procedures[visible], hide_index=True, use_container_width=True)
-
+    st.subheader("Exportações")
+    exports = management_export(sessions, procedures, privacy_mode=privacy_mode)
+    export_columns = st.columns(len(exports))
+    for column, (filename, data) in zip(export_columns, exports.items()):
+        column.download_button(
+            f"Baixar {filename}",
+            data=data,
+            file_name=filename,
+            mime="text/csv",
+            use_container_width=True,
+        )
+    if privacy_mode:
+        st.caption("As exportações estão sem nomes de pacientes porque o modo privacidade está ativo.")
