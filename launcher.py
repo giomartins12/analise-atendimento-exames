@@ -33,6 +33,20 @@ def _show_error(message: str) -> None:
     ctypes.windll.user32.MessageBoxW(0, message, "Análise de Atendimento e Exames", 0x10)
 
 
+def _streamlit_arguments(app_path: Path, port: int, headless: str) -> list[str]:
+    return [
+        "streamlit",
+        "run",
+        str(app_path),
+        "--global.developmentMode=false",
+        "--server.address=127.0.0.1",
+        f"--server.port={port}",
+        f"--server.headless={headless}",
+        "--browser.gatherUsageStats=false",
+        "--server.fileWatcherType=none",
+    ]
+
+
 def main() -> None:
     data_dir = _user_data_dir()
     logging.basicConfig(
@@ -49,16 +63,7 @@ def main() -> None:
     os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
     port = _available_port()
     headless = os.environ.get("CLINIC_ANALYTICS_HEADLESS", "false").lower()
-    sys.argv = [
-        "streamlit",
-        "run",
-        str(app_path),
-        "--server.address=127.0.0.1",
-        f"--server.port={port}",
-        f"--server.headless={headless}",
-        "--browser.gatherUsageStats=false",
-        "--server.fileWatcherType=none",
-    ]
+    sys.argv = _streamlit_arguments(app_path, port, headless)
     streamlit_cli.main()
 
 
