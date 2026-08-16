@@ -44,8 +44,23 @@ exe = EXE(
     disable_windowed_traceback=False,
 )
 
+diagnostic_exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="AnaliseAtendimentoExames-Diagnostico",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+)
+
 coll = COLLECT(
     exe,
+    diagnostic_exe,
     a.binaries,
     a.datas,
     strip=False,
@@ -53,4 +68,3 @@ coll = COLLECT(
     upx_exclude=[],
     name="AnaliseAtendimentoExames",
 )
-
